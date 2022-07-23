@@ -1272,11 +1272,7 @@ func playerHandler(c echo.Context) error {
 			}
 		}
 		if ps == nil {
-			// 行がない = スコアが記録されてない
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, playerID=%s, %w", v.tenantID, c.ID, p.ID, err)
+			continue
 		}
 		psds = append(psds, PlayerScoreDetail{
 			CompetitionTitle: c.Title,
