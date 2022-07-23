@@ -31,4 +31,4 @@ CREATE TABLE player_score (
   updated_at BIGINT NOT NULL
 );
 
-CREATE INDEX talent_competition ON player_score(tenant_id, competition_id, row_num DESC);
+CREATE INDEX talent_competition ON player_score(tenant_id, competition_id, player_id, row_num DESC);
