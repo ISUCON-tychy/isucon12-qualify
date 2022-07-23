@@ -79,7 +79,7 @@ func tenantDBPath(id int64) string {
 }
 
 var connCache map[int64]*sqlx.DB
-var mu sync.RWMutex
+var mu = sync.RWMutex{}
 
 func readSqliteConn(id int64) *sqlx.DB {
 	mu.RLock()
