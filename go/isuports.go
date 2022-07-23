@@ -3,7 +3,6 @@ package isuports
 import (
 	"context"
 	"database/sql"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -23,6 +21,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gofrs/flock"
 	"github.com/jmoiron/sqlx"
+	"github.com/jszwec/csvutil"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -1054,14 +1053,18 @@ func competitionScoreHandler(c echo.Context) error {
 	}
 	defer f.Close()
 
-	r := csv.NewReader(f)
-	headers, err := r.Read()
+	bs, err := io.ReadAll(f)
 	if err != nil {
-		return fmt.Errorf("error r.Read at header: %w", err)
+		return err
 	}
-	if !reflect.DeepEqual(headers, []string{"player_id", "score"}) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid CSV headers")
-	}
+	// r := csv.NewReader(f)
+	// headers, err := r.Read()
+	// if err != nil {
+	// 	return fmt.Errorf("error r.Read at header: %w", err)
+	// }
+	// if !reflect.DeepEqual(headers, []string{"player_id", "score"}) {
+	// 	return echo.NewHTTPError(http.StatusBadRequest, "invalid CSV headers")
+	// }
 
 	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
 	fl, err := flockByTenantID(v.tenantID)
@@ -1069,7 +1072,6 @@ func competitionScoreHandler(c echo.Context) error {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
 	defer fl.Close()
-	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
 	var pls []PlayerRow
 	if err := tenantDB.SelectContext(
@@ -1080,19 +1082,25 @@ func competitionScoreHandler(c echo.Context) error {
 	); err != nil {
 		return fmt.Errorf("error Select player: %w", err)
 	}
-	for {
-		rowNum++
-		row, err := r.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return fmt.Errorf("error r.Read at rows: %w", err)
-		}
-		if len(row) != 2 {
-			return fmt.Errorf("row must have two columns: %#v", row)
-		}
-		playerID, scoreStr := row[0], row[1]
+	type csvInput struct {
+		PlayerID string `csv:"player_id"`
+		ScoreStr string `csv:"score"`
+	}
+	rows := []csvInput{}
+	csvutil.Unmarshal(bs, &rows)
+	for i, ro := range rows {
+		// rowNum++
+		// row, err := r.Read()
+		// if err != nil {
+		// 	if err == io.EOF {
+		// 		break
+		// 	}
+		// 	return fmt.Errorf("error r.Read at rows: %w", err)
+		// }
+		// if len(row) != 2 {
+		// 	return fmt.Errorf("row must have two columns: %#v", row)
+		// }
+		playerID, scoreStr := ro.PlayerID, ro.ScoreStr
 		var p *PlayerRow
 		for _, pl := range pls {
 			if pl.ID == playerID {
@@ -1125,7 +1133,7 @@ func competitionScoreHandler(c echo.Context) error {
 			PlayerID:      playerID,
 			CompetitionID: competitionID,
 			Score:         score,
-			RowNum:        rowNum,
+			RowNum:        int64(i),
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		})
