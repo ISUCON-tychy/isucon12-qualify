@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1366,7 +1365,7 @@ func competitionRankingHandler(c echo.Context) error {
 	if err := tenantDB.SelectContext(
 		ctx,
 		&pss,
-		"SELECT * FROM player_score WHERE tenant_id = ? AND competition_id = ? ORDER BY row_num DESC",
+		"SELECT * FROM player_score WHERE tenant_id = ? AND competition_id = ? ORDER BY score, row_num DESC",
 		tenant.ID,
 		competitionID,
 	); err != nil {
@@ -1408,12 +1407,7 @@ func competitionRankingHandler(c echo.Context) error {
 			RowNum:            ps.RowNum,
 		})
 	}
-	sort.Slice(ranks, func(i, j int) bool {
-		if ranks[i].Score == ranks[j].Score {
-			return ranks[i].RowNum < ranks[j].RowNum
-		}
-		return ranks[i].Score > ranks[j].Score
-	})
+
 	pagedRanks := make([]CompetitionRank, 0, 100)
 	for i, rank := range ranks {
 		if int64(i) < rankAfter {
