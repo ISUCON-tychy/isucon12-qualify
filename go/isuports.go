@@ -1056,6 +1056,15 @@ func competitionScoreHandler(c echo.Context) error {
 	defer fl.Close()
 	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
+	var pls []PlayerRow
+	if err := tenantDB.SelectContext(
+		ctx,
+		&pls,
+		"SELECT * FROM player WHERE tenant_id = ? order by id",
+		v.tenantID,
+	); err != nil {
+		return fmt.Errorf("error Select player: %w", err)
+	}
 	for {
 		rowNum++
 		row, err := r.Read()
@@ -1069,16 +1078,20 @@ func competitionScoreHandler(c echo.Context) error {
 			return fmt.Errorf("row must have two columns: %#v", row)
 		}
 		playerID, scoreStr := row[0], row[1]
-		if _, err := retrievePlayer(ctx, tenantDB, playerID); err != nil {
-			// 存在しない参加者が含まれている
-			if errors.Is(err, sql.ErrNoRows) {
-				return echo.NewHTTPError(
-					http.StatusBadRequest,
-					fmt.Sprintf("player not found: %s", playerID),
-				)
+		var p *PlayerRow
+		for _, pl := range pls {
+			if pl.ID == playerID {
+				p = &pl
+				break
 			}
-			return fmt.Errorf("error retrievePlayer: %w", err)
 		}
+		if p == nil {
+			return echo.NewHTTPError(
+				http.StatusBadRequest,
+				fmt.Sprintf("player not found: %s", playerID),
+			)
+		}
+
 		var score int64
 		if score, err = strconv.ParseInt(scoreStr, 10, 64); err != nil {
 			return echo.NewHTTPError(
