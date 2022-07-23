@@ -133,6 +133,7 @@ func SetCacheControlPrivate(next echo.HandlerFunc) echo.HandlerFunc {
 
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
+	fmt.Printf("Our team is tychy")
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
