@@ -1373,7 +1373,7 @@ func competitionRankingHandler(c echo.Context) error {
 	if err := tenantDB.SelectContext(
 		ctx,
 		&pss,
-		"SELECT tenant_id, id, player_id, competition_id, score, max(row_num) as row_num, created_at, updated_at FROM player_score WHERE tenant_id = ? AND competition_id = ? GROUP BY player_id ORDER BY score, row_num",
+		"SELECT tenant_id, id, player_id, competition_id, score, max(row_num) as row_num, created_at, updated_at FROM player_score WHERE tenant_id = ? AND competition_id = ? GROUP BY player_id ORDER BY score DESC, row_num",
 		tenant.ID,
 		competitionID,
 	); err != nil {
