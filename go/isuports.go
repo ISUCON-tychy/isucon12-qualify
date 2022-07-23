@@ -238,6 +238,26 @@ type Viewer struct {
 	tenantID   int64
 }
 
+var cachedPemKey interface{}
+
+func getPemKey() (interface{}, error) {
+	if cachedPemKey != nil {
+		return cachedPemKey, nil
+	}
+
+	keyFilename := getEnv("ISUCON_JWT_KEY_FILE", "../public.pem")
+	keysrc, err := os.ReadFile(keyFilename)
+	if err != nil {
+		return nil, fmt.Errorf("error os.ReadFile: keyFilename=%s: %w", keyFilename, err)
+	}
+	key, _, err := jwk.DecodePEM(keysrc)
+	if err != nil {
+		return nil, fmt.Errorf("error jwk.DecodePEM: %w", err)
+	}
+	cachedPemKey = key
+	return key, nil
+}
+
 // リクエストヘッダをパースしてViewerを返す
 func parseViewer(c echo.Context) (*Viewer, error) {
 	cookie, err := c.Request().Cookie(cookieName)
@@ -249,14 +269,9 @@ func parseViewer(c echo.Context) (*Viewer, error) {
 	}
 	tokenStr := cookie.Value
 
-	keyFilename := getEnv("ISUCON_JWT_KEY_FILE", "../public.pem")
-	keysrc, err := os.ReadFile(keyFilename)
+	key, err := getPemKey()
 	if err != nil {
-		return nil, fmt.Errorf("error os.ReadFile: keyFilename=%s: %w", keyFilename, err)
-	}
-	key, _, err := jwk.DecodePEM(keysrc)
-	if err != nil {
-		return nil, fmt.Errorf("error jwk.DecodePEM: %w", err)
+		return nil, err
 	}
 
 	token, err := jwt.Parse(
