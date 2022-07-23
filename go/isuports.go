@@ -1397,8 +1397,13 @@ func competitionRankingHandler(c echo.Context) error {
 		}
 		scoredPlayerSet[ps.PlayerID] = struct{}{}
 		var p *PlayerRow
-		i := sort.Search(len(pls), func(i int) bool { return pls[i].ID == ps.PlayerID })
-		p = &pls[i]
+		for _, pl := range pls {
+			if pl.ID == ps.PlayerID {
+				p = &pl
+				break
+			}
+		}
+
 		if p == nil {
 			return fmt.Errorf("error retrievePlayer: %w", err)
 		}
