@@ -1250,7 +1250,7 @@ func playerHandler(c echo.Context) error {
 	psds := make([]PlayerScoreDetail, 0, len(cs))
 
 	var psArray []PlayerScoreRow
-	query := "SELECT * FROM player_score as PS INNER JOIN"
+	query := "SELECT tenant_id, id, player_id, competition_id, score, PS.row_num as row_num, created_at, updated_at FROM player_score as PS INNER JOIN"
 	query += " (SELECT id, max(row_num) as max_row_num FROM player_score WHERE tenant_id = ? AND player_id = ? GROUP BY competition_id)"
 	query += " as PSC ON PS.id = PSC.id AND PS.row_num = PSC.max_row_num"
 	if err := tenantDB.SelectContext(
