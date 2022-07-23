@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -77,13 +78,33 @@ func tenantDBPath(id int64) string {
 	return filepath.Join(tenantDBDir, fmt.Sprintf("%d.db", id))
 }
 
+var connCache map[int64]*sqlx.DB
+var mu sync.RWMutex
+
+func readSqliteConn(id int64) *sqlx.DB {
+	mu.RLock()
+	defer mu.RUnlock()
+	return connCache[id]
+}
+
 // テナントDBに接続する
 func connectToTenantDB(id int64) (*sqlx.DB, error) {
+	db := readSqliteConn(id)
+	if db != nil {
+		return db, nil
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	db = readSqliteConn(id)
+	if db != nil {
+		return db, nil
+	}
 	p := tenantDBPath(id)
 	db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open tenant DB: %w", err)
 	}
+	connCache[id] = db
 	return db, nil
 }
 
