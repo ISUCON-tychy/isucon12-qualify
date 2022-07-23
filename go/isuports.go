@@ -1383,7 +1383,7 @@ func competitionRankingHandler(c echo.Context) error {
 	if err := tenantDB.SelectContext(
 		ctx,
 		&pls,
-		"SELECT * FROM player WHERE tenant_id = ?",
+		"SELECT * FROM player WHERE tenant_id = ? order by id",
 		v.tenantID,
 	); err != nil {
 		return fmt.Errorf("error Select player: %w", err)
@@ -1397,12 +1397,8 @@ func competitionRankingHandler(c echo.Context) error {
 		}
 		scoredPlayerSet[ps.PlayerID] = struct{}{}
 		var p *PlayerRow
-		for _, pl := range pls {
-			if pl.ID == ps.PlayerID {
-				p = &pl
-				break
-			}
-		}
+		i := sort.Search(len(pls), func(i int) bool { return pls[i].ID == ps.PlayerID })
+		p = &pls[i]
 		if p == nil {
 			return fmt.Errorf("error retrievePlayer: %w", err)
 		}
