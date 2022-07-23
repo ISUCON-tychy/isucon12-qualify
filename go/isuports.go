@@ -1248,17 +1248,30 @@ func playerHandler(c echo.Context) error {
 	}
 	defer fl.Close()
 	psds := make([]PlayerScoreDetail, 0, len(cs))
+
+	var psArray []PlayerScoreRow
+	query := "SELECT * FROM player_score as PS INNER JOIN"
+	query += " (SELECT id, max(row_num) as max_row_num FROM player_score WHERE tenant_id = ? AND player_id = ? GROUP BY competition_id)"
+	query += " as PSC ON PS.id = PSC.id AND PS.row_num = PSC.max_row_num"
+	if err := tenantDB.SelectContext(
+		ctx,
+		&psArray,
+		query,
+		v.tenantID,
+		p.ID,
+	); err != nil {
+		return fmt.Errorf("error Select player: %w", err)
+	}
+
 	for _, c := range cs {
-		ps := PlayerScoreRow{}
-		if err := tenantDB.GetContext(
-			ctx,
-			&ps,
-			// 最後にCSVに登場したスコアを採用する = row_numが一番大きいもの
-			"SELECT * FROM player_score WHERE tenant_id = ? AND competition_id = ? AND player_id = ? ORDER BY row_num DESC LIMIT 1",
-			v.tenantID,
-			c.ID,
-			p.ID,
-		); err != nil {
+		var ps *PlayerScoreRow
+		for _, psItem := range psArray {
+			if psItem.CompetitionID == c.ID {
+				ps = &psItem
+				break
+			}
+		}
+		if ps == nil {
 			// 行がない = スコアが記録されてない
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
