@@ -1077,7 +1077,10 @@ func competitionScoreHandler(c echo.Context) error {
 		ScoreStr string `csv:"score"`
 	}
 	rows := []csvInput{}
-	csvutil.Unmarshal(bs, &rows)
+	err = csvutil.Unmarshal(bs, &rows)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid CSV headers")
+	}
 	for i, ro := range rows {
 		// rowNum++
 		// row, err := r.Read()
