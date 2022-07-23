@@ -1238,24 +1238,34 @@ func playerHandler(c echo.Context) error {
 	}
 	defer fl.Close()
 	pss := make([]PlayerScoreRow, 0, len(cs))
+	var psArray []PlayerScoreRow
+
+	if err := tenantDB.SelectContext(
+		ctx,
+		&psArray,
+		"SELECT tenant_id, id, player_id, competition_id, score, max(row_num) as row_num, created_at, updated_at FROM player_score WHERE tenant_id = ? AND player_id = ? GROUP BY competition_id ORDER BY competition_id",
+		v.tenantID,
+		p.ID,
+	); err != nil {
+		return fmt.Errorf("error Select player: %w", err)
+	}
+
 	for _, c := range cs {
-		ps := PlayerScoreRow{}
-		if err := tenantDB.GetContext(
-			ctx,
-			&ps,
-			// 最後にCSVに登場したスコアを採用する = row_numが一番大きいもの
-			"SELECT * FROM player_score WHERE tenant_id = ? AND competition_id = ? AND player_id = ? ORDER BY row_num DESC LIMIT 1",
-			v.tenantID,
-			c.ID,
-			p.ID,
-		); err != nil {
+		var ps *PlayerScoreRow
+		for _, psItem := range psArray {
+			if psItem.CompetitionID == c.ID {
+				ps = &psItem
+				break
+			}
+		}
+		if ps == nil {
 			// 行がない = スコアが記録されてない
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
 			return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, playerID=%s, %w", v.tenantID, c.ID, p.ID, err)
 		}
-		pss = append(pss, ps)
+		pss = append(pss, *ps)
 	}
 
 	psds := make([]PlayerScoreDetail, 0, len(pss))
