@@ -814,14 +814,11 @@ func playersAddHandler(c echo.Context) error {
 				id, displayName, false, now, now, err,
 			)
 		}
-		p, err := retrievePlayer(ctx, tenantDB, id)
-		if err != nil {
-			return fmt.Errorf("error retrievePlayer: %w", err)
-		}
+
 		pds = append(pds, PlayerDetail{
-			ID:             p.ID,
-			DisplayName:    p.DisplayName,
-			IsDisqualified: p.IsDisqualified,
+			ID:             id,
+			DisplayName:    displayName,
+			IsDisqualified: false,
 		})
 	}
 
@@ -1409,11 +1406,9 @@ func competitionRankingHandler(c echo.Context) error {
 		}
 		scoredPlayerSet[ps.PlayerID] = struct{}{}
 		var p *PlayerRow
-		for _, pl := range pls {
-			if pl.ID == ps.PlayerID {
-				p = &pl
-				break
-			}
+		i := sort.Search(len(pls), func(i int) bool { return pls[i].ID >= ps.PlayerID })
+		if i < len(pls) && pls[i].ID == ps.PlayerID {
+			p = &pls[i]
 		}
 
 		if p == nil {
