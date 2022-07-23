@@ -1260,18 +1260,7 @@ func playerHandler(c echo.Context) error {
 		v.tenantID,
 		p.ID,
 	); err != nil {
-		res := SuccessResult{
-			Status: true,
-			Data: PlayerHandlerResult{
-				Player: PlayerDetail{
-					ID:             p.ID,
-					DisplayName:    p.DisplayName,
-					IsDisqualified: p.IsDisqualified,
-				},
-				Scores: psds,
-			},
-		}
-		return c.JSON(http.StatusOK, res)
+		return fmt.Errorf("error Select player: %w", err)
 	}
 
 	for _, c := range cs {
