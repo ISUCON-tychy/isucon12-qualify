@@ -1243,7 +1243,7 @@ func playerHandler(c echo.Context) error {
 	if err := tenantDB.SelectContext(
 		ctx,
 		&psArray,
-		"SELECT tenant_id, id, player_id, competition_id, score, max(row_num) as row_num, created_at, updated_at FROM player_score WHERE tenant_id = ? AND player_id = ? GROUP BY competition_id ORDER BY competition_id",
+		"SELECT * FROM player_score as PS INNER JOIN (SELECT tenant_id, player_id, competition_id, max(row_num) as max_row_num FROM player_score WHERE tenant_id = ? AND player_id = ? GROUP BY competition_Id) as PSC ON PS.tenant_id = PSC.tenant_id AND PS.player_id = PSC.player_id AND PS.competition_id = PSC.competition_id AND PS.row_num = PSC.max_row_num",
 		v.tenantID,
 		p.ID,
 	); err != nil {
