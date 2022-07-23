@@ -1378,6 +1378,17 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 	ranks := make([]CompetitionRank, 0, len(pss))
 	scoredPlayerSet := make(map[string]struct{}, len(pss))
+
+	var pls []PlayerRow
+	if err := tenantDB.SelectContext(
+		ctx,
+		&pls,
+		"SELECT * FROM player WHERE tenant_id = ?",
+		v.tenantID,
+	); err != nil {
+		return fmt.Errorf("error Select player: %w", err)
+	}
+
 	for _, ps := range pss {
 		// player_scoreが同一player_id内ではrow_numの降順でソートされているので
 		// 現れたのが2回目以降のplayer_idはより大きいrow_numでスコアが出ているとみなせる
@@ -1385,8 +1396,14 @@ func competitionRankingHandler(c echo.Context) error {
 			continue
 		}
 		scoredPlayerSet[ps.PlayerID] = struct{}{}
-		p, err := retrievePlayer(ctx, tenantDB, ps.PlayerID)
-		if err != nil {
+		var p *PlayerRow
+		for _, pl := range pls {
+			if pl.ID == ps.PlayerID {
+				p = &pl
+				break
+			}
+		}
+		if p == nil {
 			return fmt.Errorf("error retrievePlayer: %w", err)
 		}
 		ranks = append(ranks, CompetitionRank{
